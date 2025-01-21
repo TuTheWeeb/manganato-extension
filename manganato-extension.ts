@@ -1,17 +1,24 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { appendFileSync } from "fs";
+import { executablePath } from "puppeteer-core";
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+
+async function loadData(link: string) {
+  const res = await axios.get(link);
+  return cheerio.load(res.data);
+}
 
 // Chapters
 
-export interface Chapter {
+export interface ChapterInfo {
   info: { views: string; time: string; chapter: string };
   link: string | undefined;
 }
 
-export function buildChapters($: cheerio.CheerioAPI): Array<Chapter> {
+export function buildChapters($: cheerio.CheerioAPI): Array<ChapterInfo> {
   const chapter_list = "ul li.a-h";
-  let Chapters: Array<Chapter> = [];
+  let Chapters: Array<ChapterInfo> = [];
 
   $(chapter_list).each((i, elem) => {
     const temp = cheerio.load(String($(elem).html()));
@@ -40,13 +47,12 @@ export interface Manga {
   genres: Array<string> | string;
   views: Array<string> | string;
   description: Array<string> | string;
-  chapters: Array<Chapter>;
+  chapters: Array<ChapterInfo>;
   lastUpdated: Array<string> | string;
 }
 
 export async function buildMangaFromManganato(link: string): Promise<Manga> {
-  const res = await axios.get(link);
-  const $ = cheerio.load(res.data);
+  const $ = await loadData(link);
   const story_info = "div.panel-story-info";
   const tables = story_info.concat(" table tbody tr");
 
@@ -83,3 +89,39 @@ export async function buildMangaFromManganato(link: string): Promise<Manga> {
   };
 }
 
+const captureAll = async (elements: any, path: string) => {
+  let i = 0;
+  for (const element of elements) {
+    try {
+      await element.screenshot({
+        path: `./${path}/${i}.png`,
+        omitBackground: true,
+      });
+    } catch {
+      (err: Error) => {
+        console.log(err);
+      };
+    }
+    i += 1;
+  }
+};
+
+async function downloadChapter(link: string, path: string) {
+  await puppeteer
+    .use(StealthPlugin())
+    .launch({
+      headless: true,
+      executablePath: executablePath()
+      //executablePath: "",
+    })
+    .then(async (browser: any) => {
+      console.log("Runing...");
+      const page = await browser.newPage();
+      await page.goto(link);
+      await Bun.sleep(1000);
+      const imgs = await page.$$("div.container-chapter-reader > img", false);
+      await captureAll(imgs, path);
+
+      await browser.close();
+    });
+}
