@@ -11,7 +11,7 @@
   "name": "manganato-extension",
   "module": "manganato-extension.ts",
   "main": "manganato-extension.ts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "devDependencies": {
     "@types/bun": "latest"
