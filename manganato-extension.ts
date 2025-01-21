@@ -1,6 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { executablePath } from "puppeteer-core";
+import { ElementHandle, executablePath, type NodeFor } from "puppeteer-core";
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
@@ -89,30 +89,60 @@ export async function buildMangaFromManganato(link: string): Promise<Manga> {
   };
 }
 
-const captureAll = async (elements: any, path: string) => {
-  let i = 0;
-  for (const element of elements) {
+async function downloadPages(
+  elements: Array<ElementHandle<NodeFor<any>>>,
+  path: string
+) {
+  for (let i = 0; i < elements.length; i++) {
     try {
-      await element.screenshot({
+      await elements.at(i)?.screenshot({
         path: `./${path}/${i}.png`,
         omitBackground: true,
+        optimizeForSpeed: true
       });
     } catch {
       (err: Error) => {
         console.log(err);
       };
     }
-    i += 1;
   }
-};
+}
 
-async function downloadChapter(link: string, path: string) {
+async function getPages(
+  elements: Array<ElementHandle<NodeFor<any>>>
+): Promise<Array<Uint8Array>> {
+  const imgs: Array<Uint8Array> = [];
+
+  for (let i = 0; i < elements.length; i++) {
+    try {
+      await elements
+        .at(i)
+        ?.screenshot({
+          omitBackground: true,
+          optimizeForSpeed: true
+        })
+        .then((img) => imgs.push(img));
+    } catch {
+      (err: Error) => {
+        console.log(err);
+      };
+    }
+  }
+
+  return Promise.resolve(imgs);
+}
+
+async function downloadChapter(link: string, path: string, chrome_path: string | null) {
+  if (chrome_path === null) {
+    chrome_path = executablePath()
+  }
+
   await puppeteer
     .use(StealthPlugin())
     .launch({
       headless: true,
-      executablePath: executablePath()
-      //executablePath: "",
+      executablePath: chrome_path,
+      defaultViewport: null,
     })
     .then(async (browser: any) => {
       console.log("Runing...");
@@ -120,8 +150,47 @@ async function downloadChapter(link: string, path: string) {
       await page.goto(link);
       await Bun.sleep(1000);
       const imgs = await page.$$("div.container-chapter-reader > img", false);
-      await captureAll(imgs, path);
+      await downloadPages(imgs, path);
 
       await browser.close();
     });
 }
+
+async function getChapter(link: string, chrome_path: string | null): Promise<Array<Uint8Array>> {
+  if (chrome_path === null) {
+    chrome_path = executablePath()
+  }
+
+  let imgs: Array<Uint8Array> = []
+
+  await puppeteer
+    .use(StealthPlugin())
+    .launch({
+      headless: true,
+      executablePath: chrome_path,
+      defaultViewport: null,
+    })
+    .then(async (browser: any) => {
+      console.log("Runing...");
+      const page = await browser.newPage();
+      await page.goto(link);
+      await Bun.sleep(1000);
+      const html_imgs = await page.$$("div.container-chapter-reader > img", false);
+      imgs = await getPages(html_imgs);
+
+      await browser.close();
+    });
+
+  return Promise.resolve(imgs)
+}
+
+downloadChapter(
+  "https://chapmanganato.to/manga-kt987576/chapter-1",
+  "images/",
+  "/home/eduardo/.nix-profile/bin/chromium"
+);
+
+getChapter("https://chapmanganato.to/manga-kt987576/chapter-1", "/home/eduardo/.nix-profile/bin/chromium").then(imgs => {
+  console.log(imgs)
+})
+
