@@ -75,7 +75,7 @@ export async function buildMangaFromManganato(link: string): Promise<Manga> {
     return val;
   };
 
-  return {
+  return Promise.resolve({
     img: $(story_info.concat(" img")).attr("src"),
     title: String(),
     alt_titles: getSon(firstArray[0]),
@@ -86,7 +86,7 @@ export async function buildMangaFromManganato(link: string): Promise<Manga> {
     views: $(secondArray[1]).children().last().text(),
     description: "",
     chapters: buildChapters($),
-  };
+  })
 }
 
 async function downloadPages(
@@ -132,7 +132,7 @@ async function getPages(
   return Promise.resolve(imgs);
 }
 
-async function downloadChapter(link: string, path: string, chrome_path: string | null) {
+export async function downloadChapter(link: string, path: string, chrome_path: string | null) {
   if (chrome_path === null) {
     chrome_path = executablePath()
   }
@@ -156,7 +156,7 @@ async function downloadChapter(link: string, path: string, chrome_path: string |
     });
 }
 
-async function getChapter(link: string, chrome_path: string | null): Promise<Array<Uint8Array>> {
+export async function getChapter(link: string, chrome_path: string | null): Promise<Array<Uint8Array>> {
   if (chrome_path === null) {
     chrome_path = executablePath()
   }
@@ -183,14 +183,4 @@ async function getChapter(link: string, chrome_path: string | null): Promise<Arr
 
   return Promise.resolve(imgs)
 }
-
-downloadChapter(
-  "https://chapmanganato.to/manga-kt987576/chapter-1",
-  "images/",
-  "/home/eduardo/.nix-profile/bin/chromium"
-);
-
-getChapter("https://chapmanganato.to/manga-kt987576/chapter-1", "/home/eduardo/.nix-profile/bin/chromium").then(imgs => {
-  console.log(imgs)
-})
 
