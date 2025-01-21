@@ -44,7 +44,7 @@ export interface Manga {
   lastUpdated: Array<string> | string;
 }
 
-export async function buildManga(link: string): Promise<Manga> {
+export async function buildMangaFromManganato(link: string): Promise<Manga> {
   const res = await axios.get(link);
   const $ = cheerio.load(res.data);
   const story_info = "div.panel-story-info";
@@ -83,5 +83,3 @@ export async function buildManga(link: string): Promise<Manga> {
   };
 }
 
-//const link = "https://chapmanganato.to/manga-kb988110"
-//buildManga(link);
