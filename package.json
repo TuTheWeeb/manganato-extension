@@ -1,11 +1,12 @@
 {
   "dependencies": {
     "axios": "^1.7.9",
-    "axios-retry": "^4.5.0",
     "cheerio": "^1.0.0"
   },
-  "name": "testingcurl",
-  "module": "index.ts",
+  "name": "manganato-extension",
+  "module": "manganato-extension.ts",
+  "main": "manganato-extension.ts",
+  "version": "1.0.0",
   "type": "module",
   "devDependencies": {
     "@types/bun": "latest"

@@ -1,15 +1,16 @@
 # testingcurl
 
+This is a module that scraps manga data from manganato
+
 To install dependencies:
 
 ```bash
 bun install
 ```
 
-To run:
+To add to your code:
 
 ```bash
-bun run index.ts
+import { buildMangaFromManganato } from 'manganato-extension'
 ```
 
-This project was created using `bun init` in bun v1.1.31. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
