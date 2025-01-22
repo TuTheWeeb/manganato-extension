@@ -4,6 +4,20 @@ import { ElementHandle, executablePath, type NodeFor } from "puppeteer-core";
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
+function reverse(s: string): string {
+  return s.split("").reverse().join("")
+}
+
+function parseCode(s: string): ChapterCode {
+  s = reverse(s)
+
+  const chapter = reverse(s.slice(0, s.indexOf("-")))
+  s = s.slice(s.indexOf("/")+1)
+  const manga_code = reverse(s.slice(0, s.indexOf("-")))
+  
+  return {manga_code: manga_code, chapter: chapter}
+}
+
 async function loadData(link: string) {
   const res = await axios.get(link);
   return cheerio.load(res.data);
@@ -21,9 +35,14 @@ function clean(data: string | string[]) {
 
 // Chapters
 
+export interface ChapterCode {
+  manga_code: string,
+  chapter: string
+}
+
 export interface ChapterInfo {
   info: { views: string; time: string; chapter: string };
-  code: string | undefined;
+  code: ChapterCode;
 }
 
 export function buildChapters($: cheerio.CheerioAPI): Array<ChapterInfo> {
@@ -32,11 +51,7 @@ export function buildChapters($: cheerio.CheerioAPI): Array<ChapterInfo> {
 
   $(chapter_list).each((i, elem) => {
     const temp = cheerio.load(String($(elem).html()));
-    let code = temp("a").attr("href");
-    // Removes the first -
-    code = code?.slice(code.indexOf("-") + 1);
-    // edit the code so that can go trough the pull request
-    code = code?.slice(0, code.indexOf("/")).concat(code.slice(code.indexOf("-")))
+    let code = parseCode(temp("a").attr("href"));
 
     Chapters.push({
       info: {
@@ -66,7 +81,9 @@ export interface Manga {
   lastUpdated: Array<string> | string;
 }
 
-export async function buildMangaFromManganato(link: string): Promise<Manga> {
+export async function buildMangaFromManganato(code: string): Promise<Manga> {
+  const link = `https://chapmanganato.to/manga-${code}`
+
   const $ = await loadData(link);
   const story_info = "div.panel-story-info";
   const tables = story_info.concat(" table tbody tr");
@@ -151,10 +168,12 @@ async function getPages(
 }
 
 export async function downloadChapter(
-  link: string,
+  code: ChapterCode,
   path: string,
   chrome_path: string | null
 ) {
+  const link = `https://chapmanganato.to/manga-${code.manga_code}/chapter-${code.chapter}`
+
   if (chrome_path === null) {
     chrome_path = executablePath();
   }
@@ -179,9 +198,11 @@ export async function downloadChapter(
 }
 
 export async function getChapter(
-  link: string,
+  code: ChapterCode,
   chrome_path: string | null
 ): Promise<Array<Uint8Array>> {
+  const link = `https://chapmanganato.to/manga-${code.manga_code}/chapter-${code.chapter}`
+
   if (chrome_path === null) {
     chrome_path = executablePath();
   }
@@ -196,13 +217,13 @@ export async function getChapter(
       defaultViewport: null,
     })
     .then(async (browser: any) => {
-      console.log("Runing...");
+      console.log("Geting pages...");
       const page = await browser.newPage();
       await page.goto(link);
-      await Bun.sleep(1000);
+      await Bun.sleep(2000);
       const html_imgs = await page.$$(
         "div.container-chapter-reader > img",
-        false
+        true
       );
       imgs = await getPages(html_imgs);
 
@@ -212,15 +233,3 @@ export async function getChapter(
   return Promise.resolve(imgs);
 }
 
-buildMangaFromManganato("https://chapmanganato.to/manga-kt987576").then((manga) => {
-  console.log(manga.chapters)
-});
-
-/*
-getChapter(
-  "https://chapmanganato.to/manga-kt987576/chapter-1",
-  "/home/eduardo/.nix-profile/bin/chromium"
-).then((m) => {
-  console.log(m)
-});
-*/
